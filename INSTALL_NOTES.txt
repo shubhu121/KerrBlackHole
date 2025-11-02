@@ -1,0 +1,105 @@
+================================================================================
+KERR BLACK HOLE RENDERER - INSTALLATION NOTES
+================================================================================
+
+IMPORTANT: Before building, you must set up GLAD manually.
+
+STEP 1: Generate GLAD Loader
+-----------------------------
+1. Visit: https://glad.dav1d.de/
+2. Configure:
+   - Language: C/C++
+   - Specification: OpenGL
+   - gl: Version 4.6
+   - Profile: Core
+3. Click "GENERATE"
+4. Download glad.zip
+
+STEP 2: Extract GLAD
+--------------------
+Extract the contents so you have this structure:
+
+kerr_blackhole/
+  external/
+    glad/
+      include/
+        glad/
+          glad.h
+        KHR/
+          khrplatform.h
+      src/
+        glad.c
+
+STEP 3: Run Setup Script
+------------------------
+Open Command Prompt and run:
+  > setup.bat
+
+This will:
+  - Install GLFW and other dependencies via vcpkg
+  - Clone ImGui repository
+  - Create build directory
+
+STEP 4: Build
+------------
+Open "Developer Command Prompt for Visual Studio" and run:
+  > build.bat
+
+Or manually:
+  > cd build
+  > cmake .. -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake
+  > cmake --build . --config Release
+
+STEP 5: Run
+----------
+  > cd build\Release
+  > KerrBlackHole.exe
+
+================================================================================
+QUICK TROUBLESHOOTING
+================================================================================
+
+Problem: "Cannot find glad.h"
+Solution: Ensure GLAD is properly extracted to external/glad/
+
+Problem: "vcpkg not found"
+Solution: Install vcpkg from https://github.com/Microsoft/vcpkg
+          Run: vcpkg integrate install
+
+Problem: "CMake not found"
+Solution: Install CMake from https://cmake.org/download/
+
+Problem: "cl.exe not found"
+Solution: Run build.bat from "Developer Command Prompt for VS"
+
+Problem: "Black screen when running"
+Solution: Update GPU drivers, verify OpenGL 4.6 support
+
+================================================================================
+SYSTEM REQUIREMENTS
+================================================================================
+
+Minimum:
+  - Windows 10/11 (64-bit)
+  - Visual Studio 2019 or later
+  - GPU with OpenGL 4.6 support
+  - 2 GB RAM
+
+Recommended:
+  - NVIDIA GTX 1660 / AMD RX 5600 or better
+  - 4 GB RAM
+  - 1920×1080 display
+
+================================================================================
+DOCUMENTATION FILES
+================================================================================
+
+README.md          - Complete project documentation
+QUICKSTART.md      - Step-by-step setup guide for beginners
+PHYSICS.md         - Detailed physics and mathematics explanation
+PARAMETER_GUIDE.md - Visual guide to all adjustable parameters
+PROJECT_SUMMARY.md - Technical overview and implementation details
+
+Start with QUICKSTART.md for easiest setup!
+
+================================================================================

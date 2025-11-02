@@ -1,0 +1,314 @@
+================================================================================
+KERR BLACK HOLE RENDERER - VISUAL REFERENCE GUIDE
+================================================================================
+
+This document describes what you should see when the renderer is working
+correctly. Use this to verify your build is functioning properly.
+
+================================================================================
+EXPECTED VISUAL APPEARANCE
+================================================================================
+
+🎨 DEFAULT VIEW (First Launch)
+───────────────────────────────
+
+When you launch the program, you should see:
+
+  [  BACKGROUND: Black with white stars scattered throughout  ]
+  │                                                            │
+  │           ⭐      ⭐         ⭐        ⭐     ⭐            │
+  │                                                            │
+  │      ⭐         ╭────────────────╮         ⭐             │
+  │              ╭──│  Orange/White  │──╮                     │
+  │    ⭐       │   │  Glowing Disk   │   │       ⭐          │
+  │           ╭─│   ╰────────────────╯   │─╮                 │
+  │          │  │    ●●●●●●●●●●●●●●●●    │  │                │
+  │    ⭐    │  │  ●●              ●●●   │  │    ⭐          │
+  │         │   │ ●●   ███████████   ●●  │   │               │
+  │        │    │●●●  ███       ███  ●●● │    │              │
+  │   ⭐   │    │●●  ███  BLACK   ███ ●● │    │   ⭐         │
+  │       │     │●  ███   SHADOW   ███ ●●│     │             │
+  │       │     │● ███              ███ ● │     │            │
+  │  ⭐   │     │●●███    (Dark)    ███●●│     │  ⭐         │
+  │      │      │● ███              ███ ●│      │            │
+  │      │      │●● ███            ███ ●●│      │            │
+  │      │      │●●● ███        ███  ●●●│      │            │
+  │      │       │●●●  ███████████  ●●● │       │           │
+  │       │      │ ●●●            ●●●  │      │             │
+  │   ⭐   │      │  ●●●●●●●●●●●●●●●●  │      │   ⭐         │
+  │         │      ╰────────────────╯      │                 │
+  │          ╰─│   Orange/White  │──╯                        │
+  │    ⭐      ╰──│  Glowing Disk  │──╯       ⭐             │
+  │                ╰────────────────╯                         │
+  │      ⭐              ⭐          ⭐            ⭐          │
+  │                                                            │
+  [___________________________________________________________|
+
+KEY FEATURES TO VERIFY:
+  ✅ 1. Central BLACK SHADOW (perfectly dark, absorbing all light)
+  ✅ 2. Bright PHOTON RING around shadow (glowing orange/white)
+  ✅ 3. ACCRETION DISK visible both ABOVE and BELOW the black hole
+  ✅ 4. Disk appears WARPED (curved around the black hole)
+  ✅ 5. ASYMMETRIC brightness (one side brighter = Doppler effect)
+  ✅ 6. Background STARS scattered throughout
+  ✅ 7. DISTORTED stars near the black hole (gravitational lensing)
+
+================================================================================
+COMPONENT DESCRIPTIONS
+================================================================================
+
+1. BLACK SHADOW (Event Horizon)
+   ╔═══════════════════════════════════════════════════════════╗
+   ║ Location:    Center of screen                             ║
+   ║ Color:       Absolutely black (RGB 0,0,0)                 ║
+   ║ Shape:       Circular (a=0) or Elliptical (a>0)           ║
+   ║ Physics:     Light cannot escape from here                ║
+   ║ Size:        Depends on camera distance (larger when close)║
+   ╚═══════════════════════════════════════════════════════════╝
+
+   What it should look like:
+   • Perfectly dark (no stars visible inside)
+   • Sharp, well-defined edge
+   • Slightly offset from center if spin > 0
+   • No noise or artifacts
+
+2. PHOTON RING
+   ╔═══════════════════════════════════════════════════════════╗
+   ║ Location:    Immediately surrounding the shadow           ║
+   ║ Color:       Bright orange-white-yellow                   ║
+   ║ Appearance:  Glowing ring, brightest part of image        ║
+   ║ Physics:     Photons orbiting multiple times              ║
+   ║ Width:       Thin (2-3 pixels on default settings)        ║
+   ╚═══════════════════════════════════════════════════════════╝
+
+   What it should look like:
+   • Brightest feature in the entire image
+   • Smooth, continuous ring (no gaps)
+   • Slightly wider on one side (asymmetric if a>0)
+   • Soft glow extending outward
+
+3. ACCRETION DISK
+   ╔═══════════════════════════════════════════════════════════╗
+   ║ Location:    Above, below, and beside the shadow          ║
+   ║ Color:       Orange at inner edge → Red at outer edge     ║
+   ║ Pattern:     Brighter on left, dimmer on right (or vice  ║
+   ║              versa depending on rotation direction)       ║
+   ║ Physics:     Hot gas spiraling into black hole            ║
+   ║ Shape:       Warped, appearing to wrap around the BH      ║
+   ╚═══════════════════════════════════════════════════════════╝
+
+   What it should look like:
+   • Visible as curved bands above AND below shadow
+   • Smooth color gradient (hot white/orange → cooler red)
+   • One side noticeably BRIGHTER (blue-shifted, moving toward you)
+   • Opposite side DIMMER (red-shifted, moving away)
+   • Appears to "bend" around the black hole
+
+4. BACKGROUND STARFIELD
+   ╔═══════════════════════════════════════════════════════════╗
+   ║ Location:    Entire background, behind disk               ║
+   ║ Appearance:  White pinpoint stars of varying brightness   ║
+   ║ Density:     Sparse (5-10 stars visible on screen)        ║
+   ║ Distortion:  Curved, stretched, duplicated near BH        ║
+   ║ Physics:     Gravitational lensing of distant stars       ║
+   ╚═══════════════════════════════════════════════════════════╝
+
+   What it should look like:
+   • Small white dots scattered across background
+   • Some stars appear STRETCHED into arcs near black hole
+   • Some stars DUPLICATED (Einstein ring effect)
+   • Stars behind disk may be magnified or distorted
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+
+✅ VISUAL TESTS
+
+[ ] 1. Black shadow is perfectly dark (no gray areas)
+[ ] 2. Photon ring is visible and bright
+[ ] 3. Disk appears warped (curved above and below)
+[ ] 4. Disk has brightness asymmetry (one side brighter)
+[ ] 5. Disk has color gradient (orange/white → red)
+[ ] 6. Background stars are visible (if enabled)
+[ ] 7. Stars near black hole appear distorted
+[ ] 8. No flickering or noise artifacts
+[ ] 9. Smooth rendering (no frame drops)
+[ ] 10. ImGui panel visible in top-left corner
+
+✅ INTERACTION TESTS
+
+[ ] 11. Left-click drag changes viewing angle
+[ ] 12. Scroll wheel zooms in/out
+[ ] 13. W/S keys adjust camera distance
+[ ] 14. ImGui sliders respond to mouse
+[ ] 15. Parameters update in real-time
+[ ] 16. Preset buttons work correctly
+[ ] 17. ESC key exits the program
+[ ] 18. FPS counter shows 30+ fps
+
+✅ PARAMETER TESTS
+
+[ ] 19. Spin slider (0 to 0.998) changes shadow shape
+[ ] 20. Inclination slider changes disk warping
+[ ] 21. Distance slider changes field of view
+[ ] 22. Exposure slider brightens/darkens image
+[ ] 23. Temperature slider changes disk color
+[ ] 24. "Show Stars" checkbox toggles starfield
+[ ] 25. "Schwarzschild" button makes shadow circular
+[ ] 26. "Max Spin" button makes shadow offset
+
+================================================================================
+COMMON VISUAL ISSUES AND FIXES
+================================================================================
+
+ISSUE: Black screen (nothing visible)
+FIX:
+  • Increase Exposure to 2.0-3.0
+  • Enable "Show Stars"
+  • Move Camera Distance to 15M
+  • Check that shader files are in shaders/ folder
+
+ISSUE: Shadow is gray (not black)
+FIX:
+  • This is correct! Event horizon should be ABSOLUTELY BLACK
+  • If entire screen is gray, increase Exposure
+
+ISSUE: Disk looks flat (not warped)
+FIX:
+  • Increase Inclination to 70-80°
+  • Ensure Camera Distance is 10-20M
+  • Increase Spin to 0.9-0.998
+
+ISSUE: No photon ring visible
+FIX:
+  • Move camera closer (Distance = 8-12M)
+  • Increase Exposure to 1.5-2.0
+  • Ensure lighting parameters are reasonable
+
+ISSUE: Disk appears symmetric (no brightness variation)
+FIX:
+  • This happens at Inclination = 0° or 180° (face-on view)
+  • Set Inclination to 60-80° to see Doppler effect
+  • Increase Spin to 0.8-0.998
+
+ISSUE: Starfield not visible
+FIX:
+  • Check "Show Stars" is enabled in ImGui
+  • Increase Exposure
+  • Look away from disk (stars dim near bright objects)
+
+ISSUE: Poor performance (low FPS)
+FIX:
+  • Edit shaders/blackhole.frag:
+    - Reduce MAX_STEPS to 250-300
+    - Increase STEP_SIZE to 0.08-0.1
+  • Disable "Show Stars"
+  • Reduce window size / resolution
+
+ISSUE: Image is overexposed (all white)
+FIX:
+  • Decrease Exposure to 0.5-1.0
+  • Reduce Disk Temperature
+  • Move camera farther away
+
+================================================================================
+COMPARING WITH REFERENCE IMAGES
+================================================================================
+
+Your render should match these characteristics from Interstellar/scientific
+visualizations:
+
+✅ SCHWARZSCHILD (a=0, i=45°)
+   • Perfectly circular black shadow
+   • Symmetric orange disk
+   • Thin bright photon ring
+   • No offset or asymmetry
+
+✅ KERR MAXIMUM SPIN (a=0.998, i=70°)
+   • Elliptical, offset shadow
+   • Highly warped disk (visible top AND bottom)
+   • Asymmetric: left side brighter than right (or vice versa)
+   • Disk appears to "wrap" multiple times
+   • Strong Einstein ring effect
+
+✅ FACE-ON VIEW (any a, i=0°)
+   • Concentric circular rings
+   • Minimal warping
+   • Symmetric appearance
+   • Clear geometric structure
+
+✅ EDGE-ON VIEW (any a, i=90°)
+   • Thin horizontal disk
+   • Maximum warping (disk visible far above/below)
+   • Maximum Doppler asymmetry
+   • Shadow appears as vertical ellipse
+
+================================================================================
+SCREENSHOT TEST POINTS
+================================================================================
+
+Take screenshots at these settings to verify correctness:
+
+📸 TEST 1: Default Interstellar View
+   Spin=0.998, Inclination=70°, Distance=15M, Exposure=1.5
+   Expected: Dramatic warped disk, bright photon ring, offset shadow
+
+📸 TEST 2: Schwarzschild
+   Spin=0.0, Inclination=45°, Distance=12M, Exposure=1.2
+   Expected: Circular shadow, symmetric disk, classical appearance
+
+📸 TEST 3: Face-On
+   Spin=0.5, Inclination=0°, Distance=15M, Exposure=1.8
+   Expected: Concentric rings, minimal warping
+
+📸 TEST 4: Close-Up
+   Spin=0.9, Inclination=60°, Distance=5M, Exposure=1.0
+   Expected: Large shadow, detailed photon ring, intense disk
+
+📸 TEST 5: Gravitational Lensing
+   Spin=0.998, Inclination=80°, Distance=20M, Stars=On, Exposure=2.0
+   Expected: Visible star distortion, Einstein rings, multiple images
+
+================================================================================
+PERFORMANCE BENCHMARKS
+================================================================================
+
+Your FPS should be in these ranges (1280×720 or 1920×1080):
+
+HIGH-END (RTX 3060, RX 6700 XT or better):
+  • 1280×720:   90-120 FPS
+  • 1920×1080:  60-90 FPS
+  • 2560×1440:  40-60 FPS
+
+MID-RANGE (GTX 1660, RX 5600):
+  • 1280×720:   60-90 FPS
+  • 1920×1080:  40-60 FPS
+  • 2560×1440:  25-40 FPS
+
+LOW-END (Integrated graphics, older GPUs):
+  • 1024×576:   30-45 FPS
+  • 1280×720:   20-35 FPS
+  • 1920×1080:  10-20 FPS
+
+If FPS is significantly lower, reduce MAX_STEPS in shader.
+
+================================================================================
+FINAL VERIFICATION
+================================================================================
+
+Your build is WORKING CORRECTLY if:
+
+✅ All visual elements described above are visible
+✅ Shadow is perfectly black (not gray)
+✅ Photon ring is bright and glowing
+✅ Disk appears warped and asymmetric
+✅ Parameters respond in real-time
+✅ FPS is 30+ on mid-range hardware
+✅ No crashes or errors
+✅ Controls are responsive
+
+If all checks pass: 🎉 CONGRATULATIONS! Your Kerr black hole renderer is
+working perfectly and producing scientifically accurate visualizations!
+
+================================================================================
