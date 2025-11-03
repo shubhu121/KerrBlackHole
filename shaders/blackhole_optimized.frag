@@ -15,15 +15,15 @@ uniform float uDiskColorTemp;
 
 // Constants
 const float PI = 3.14159265359;
-const float MAX_STEPS = 150.0;
-const float STEP_SIZE = 0.04;
+const float MAX_STEPS = 100.0; // Reduced from 150
+const float STEP_SIZE = 0.08; // Increased from 0.04 for fewer steps
 const float EVENT_HORIZON_MARGIN = 0.01;
 const float DISK_INNER_MULT = 1.5;
 const float DISK_OUTER = 25.0;
 const float DISK_THICKNESS = 0.15;
 
 // ============================================================================
-// NOISE FUNCTIONS FOR DETAIL
+// OPTIMIZED NOISE FUNCTIONS
 // ============================================================================
 
 float hash(vec2 p) {
@@ -34,6 +34,7 @@ float hash3D(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
 }
 
+// Simplified noise with fewer operations
 float noise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
@@ -47,10 +48,11 @@ float noise(vec2 p) {
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
+// Reduced octave count from 5 to 3 for performance
 float fbm(vec2 p) {
     float value = 0.0;
     float amplitude = 0.5;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 3; i++) {
         value += amplitude * noise(p);
         p *= 2.0;
         amplitude *= 0.5;
@@ -58,6 +60,7 @@ float fbm(vec2 p) {
     return value;
 }
 
+// Simplified 3D noise
 float noise3D(vec3 p) {
     vec3 i = floor(p);
     vec3 f = fract(p);
@@ -76,58 +79,64 @@ float noise3D(vec3 p) {
 
 float sigma(float r, float theta, float a) {
     float cosTheta = cos(theta);
-    return r * r + a * a * cosTheta * cosTheta;
+    float cosTheta2 = cosTheta * cosTheta;
+    return r * r + a * a * cosTheta2;
 }
 
 float delta(float r, float a) {
-    return r * r - 2.0 * r + a * a;
+    float r2 = r * r;
+    return r2 - 2.0 * r + a * a;
 }
 
 float A_metric(float r, float theta, float a) {
-    float sin2 = sin(theta) * sin(theta);
-    return (r * r + a * a) * (r * r + a * a) - a * a * delta(r, a) * sin2;
+    float sinTheta = sin(theta);
+    float sin2 = sinTheta * sinTheta;
+    float r2 = r * r;
+    float a2 = a * a;
+    float r2_plus_a2 = r2 + a2;
+    return r2_plus_a2 * r2_plus_a2 - a2 * delta(r, a) * sin2;
 }
 
 float eventHorizonRadius(float a) {
-    return 1.0 + sqrt(1.0 - a * a);
+    float a2 = a * a;
+    return 1.0 + sqrt(max(0.0, 1.0 - a2));
 }
 
 // ============================================================================
-// ENHANCED BLACKBODY COLOR
+// OPTIMIZED BLACKBODY COLOR
 // ============================================================================
 
 vec3 blackbodyColor(float T) {
     T = clamp(T, 1000.0, 40000.0);
-    float t = T / 1000.0;
-    vec3 color;
+    float t = T * 0.001; // Precompute division
+    vec3 color = vec3(0.0);
     
-    if (t <= 66.0) {
-        color.r = 1.0;
-    } else {
-        float r = t - 60.0;
-        color.r = clamp(329.698727446 * pow(r, -0.1332047592) / 255.0, 0.0, 1.0);
-    }
+    // Simplified blackbody approximation with fewer branches
+    float t_minus_60 = t - 60.0;
+    float t_minus_10 = t - 10.0;
     
-    if (t <= 66.0) {
-        color.g = clamp((99.4708025861 * log(t) - 161.1195681661) / 255.0, 0.0, 1.0);
-    } else {
-        float g = t - 60.0;
-        color.g = clamp(288.1221695283 * pow(g, -0.0755148492) / 255.0, 0.0, 1.0);
-    }
+    // Red channel
+    color.r = (t <= 66.0) ? 1.0 : clamp(329.698727446 * pow(t_minus_60, -0.1332047592) * 0.00392156862745, 0.0, 1.0);
     
+    // Green channel
+    color.g = (t <= 66.0) ? 
+        clamp((99.4708025861 * log(t) - 161.1195681661) * 0.00392156862745, 0.0, 1.0) :
+        clamp(288.1221695283 * pow(t_minus_60, -0.0755148492) * 0.00392156862745, 0.0, 1.0);
+    
+    // Blue channel
     if (t >= 66.0) {
         color.b = 1.0;
     } else if (t <= 19.0) {
         color.b = 0.0;
     } else {
-        color.b = clamp((138.5177312231 * log(t - 10.0) - 305.0447927307) / 255.0, 0.0, 1.0);
+        color.b = clamp((138.5177312231 * log(t_minus_10) - 305.0447927307) * 0.00392156862745, 0.0, 1.0);
     }
     
     return color;
 }
 
 // ============================================================================
-// ENHANCED STARFIELD WITH TRAILS
+// OPTIMIZED STARFIELD
 // ============================================================================
 
 vec3 starfield(vec3 dir) {
@@ -135,34 +144,37 @@ vec3 starfield(vec3 dir) {
     
     float phi = atan(dir.z, dir.x);
     float theta = acos(clamp(dir.y, -1.0, 1.0));
-    vec2 uv = vec2(phi / (2.0 * PI), theta / PI) * 150.0;
+    vec2 uv = vec2(phi * 0.1591549430919, theta * 0.3183098861838) * 150.0; // Precompute 1/(2PI) and 1/PI
     
-    // Multiple star layers
-    for (int i = 0; i < 4; i++) {
-        vec2 id = floor(uv * pow(2.0, float(i)));
+    // Reduced star layers from 4 to 2 for performance
+    for (int i = 0; i < 2; i++) {
+        vec2 id = floor(uv * (2.0 * float(i) + 1.0));
         float h = hash(id + float(i) * 100.0);
         
         if (h > 0.992) {
-            vec2 localUV = fract(uv * pow(2.0, float(i)));
-            float dist = length(localUV - vec2(0.5));
-            float brightness = pow(h, 4.0) * exp(-dist * 120.0);
+            vec2 localUV = fract(uv * (2.0 * float(i) + 1.0));
+            float dist2 = dot(localUV - vec2(0.5), localUV - vec2(0.5)); // Use squared distance
+            float brightness = pow(h, 4.0) * exp(-dist2 * 120.0);
             
             float starTemp = mix(3000.0, 15000.0, h);
             vec3 starColor = blackbodyColor(starTemp);
             
-            // Star trails (motion blur)
-            float trail = exp(-dist * 30.0) * 0.3;
+            float trail = exp(-dist2 * 30.0) * 0.3;
             stars += starColor * (brightness * 8.0 + trail);
         }
     }
     
-    // Nebula/galaxy background
+    // Simplified nebula/galaxy background
     vec2 nebUV = vec2(phi * 2.0, theta * 3.0);
     float nebula = fbm(nebUV * 3.0 + uTime * 0.01) * 0.08;
     vec3 nebColor = vec3(0.2, 0.3, 0.6) * nebula;
     
-    // Milky way band
-    float milkyWay = pow(abs(sin(phi * 2.0)) * abs(cos(theta * 3.0)), 3.0) * 0.15;
+    // Simplified milky way
+    float sinPhi2 = sin(phi * 2.0);
+    sinPhi2 = sinPhi2 * sinPhi2; // Square for pow equivalent
+    float cosTheta3 = cos(theta * 3.0);
+    cosTheta3 = cosTheta3 * cosTheta3 * cosTheta3; // Cube
+    float milkyWay = sqrt(sinPhi2) * abs(cosTheta3) * 0.15; // Simplified pow
     milkyWay *= fbm(vec2(phi * 10.0, theta * 5.0));
     vec3 milkyColor = vec3(0.4, 0.5, 0.7) * milkyWay;
     
@@ -193,20 +205,30 @@ PhotonState computeDerivatives(PhotonState state, float a) {
     float cosTheta = cos(theta);
     float sinTheta = sin(theta);
     float sin2 = sinTheta * sinTheta;
+    float inv_sig = 1.0 / sig;
+    float inv_del = (del != 0.0) ? 1.0 / del : 0.0;
     
-    deriv.r = del * pr / sig;
-    deriv.theta = ptheta / sig;
-    deriv.phi = pphi / (sig * sin2) - a * (r * r + a * a - a * pphi / sin2) / (sig * del);
+    deriv.r = del * pr * inv_sig;
+    deriv.theta = ptheta * inv_sig;
     
+    float r2_plus_a2 = r * r + a * a;
+    float term = a * (r2_plus_a2 - a * pphi * (1.0 / sin2)) * inv_del;
+    deriv.phi = pphi * inv_sig * (1.0 / sin2) - term * inv_sig;
+    
+    // Optimized derivative calculations
     float dr_sig = 2.0 * r;
-    float dr_del = 2.0 * r - 2.0;
+    float dr_del = 2.0 * (r - 1.0);
     float dtheta_sig = -2.0 * a * a * cosTheta * sinTheta;
     
-    deriv.pr = (pr * pr * dr_del / del - ptheta * ptheta * dr_sig / sig 
-                + (pphi * pphi / sin2) * (dr_sig * sin2 - sig * 0.0) / (sig * sig * sin2)) / sig;
+    float pr2 = pr * pr;
+    float ptheta2 = ptheta * ptheta;
+    float pphi2_sin2 = pphi * pphi * (1.0 / sin2);
     
-    deriv.ptheta = (ptheta * ptheta * dtheta_sig / sig 
-                    + sinTheta * cosTheta * (pphi * pphi / (sin2 * sin2))) / sig;
+    deriv.pr = (pr2 * dr_del * inv_del - ptheta2 * dr_sig * inv_sig * inv_sig 
+                + pphi2_sin2 * dr_sig * inv_sig * inv_sig * inv_sig) * inv_sig;
+    
+    deriv.ptheta = (ptheta2 * dtheta_sig * inv_sig * inv_sig 
+                    + sinTheta * cosTheta * pphi2_sin2 * pphi2_sin2) * inv_sig;
     
     deriv.pphi = 0.0;
     
@@ -217,19 +239,20 @@ PhotonState rk4Step(PhotonState state, float h, float a) {
     PhotonState k1 = computeDerivatives(state, a);
     
     PhotonState temp;
-    temp.r = state.r + 0.5 * h * k1.r;
-    temp.theta = state.theta + 0.5 * h * k1.theta;
-    temp.phi = state.phi + 0.5 * h * k1.phi;
-    temp.pr = state.pr + 0.5 * h * k1.pr;
-    temp.ptheta = state.ptheta + 0.5 * h * k1.ptheta;
+    float h_half = h * 0.5;
+    temp.r = state.r + h_half * k1.r;
+    temp.theta = state.theta + h_half * k1.theta;
+    temp.phi = state.phi + h_half * k1.phi;
+    temp.pr = state.pr + h_half * k1.pr;
+    temp.ptheta = state.ptheta + h_half * k1.ptheta;
     temp.pphi = state.pphi;
     PhotonState k2 = computeDerivatives(temp, a);
     
-    temp.r = state.r + 0.5 * h * k2.r;
-    temp.theta = state.theta + 0.5 * h * k2.theta;
-    temp.phi = state.phi + 0.5 * h * k2.phi;
-    temp.pr = state.pr + 0.5 * h * k2.pr;
-    temp.ptheta = state.ptheta + 0.5 * h * k2.ptheta;
+    temp.r = state.r + h_half * k2.r;
+    temp.theta = state.theta + h_half * k2.theta;
+    temp.phi = state.phi + h_half * k2.phi;
+    temp.pr = state.pr + h_half * k2.pr;
+    temp.ptheta = state.ptheta + h_half * k2.ptheta;
     temp.pphi = state.pphi;
     PhotonState k3 = computeDerivatives(temp, a);
     
@@ -241,19 +264,20 @@ PhotonState rk4Step(PhotonState state, float h, float a) {
     temp.pphi = state.pphi;
     PhotonState k4 = computeDerivatives(temp, a);
     
+    float inv_6 = 1.0 / 6.0;
     PhotonState result;
-    result.r = state.r + h * (k1.r + 2.0 * k2.r + 2.0 * k3.r + k4.r) / 6.0;
-    result.theta = state.theta + h * (k1.theta + 2.0 * k2.theta + 2.0 * k3.theta + k4.theta) / 6.0;
-    result.phi = state.phi + h * (k1.phi + 2.0 * k2.phi + 2.0 * k3.phi + k4.phi) / 6.0;
-    result.pr = state.pr + h * (k1.pr + 2.0 * k2.pr + 2.0 * k3.pr + k4.pr) / 6.0;
-    result.ptheta = state.ptheta + h * (k1.ptheta + 2.0 * k2.ptheta + 2.0 * k3.ptheta + k4.ptheta) / 6.0;
+    result.r = state.r + h * (k1.r + 2.0 * (k2.r + k3.r) + k4.r) * inv_6;
+    result.theta = state.theta + h * (k1.theta + 2.0 * (k2.theta + k3.theta) + k4.theta) * inv_6;
+    result.phi = state.phi + h * (k1.phi + 2.0 * (k2.phi + k3.phi) + k4.phi) * inv_6;
+    result.pr = state.pr + h * (k1.pr + 2.0 * (k2.pr + k3.pr) + k4.pr) * inv_6;
+    result.ptheta = state.ptheta + h * (k1.ptheta + 2.0 * (k2.ptheta + k3.ptheta) + k4.ptheta) * inv_6;
     result.pphi = state.pphi;
     
     return result;
 }
 
 // ============================================================================
-// ENHANCED DISK RENDERING
+// OPTIMIZED DISK RENDERING
 // ============================================================================
 
 vec3 renderDisk(float r, float phi, float theta, float a, float rHorizon, vec3 camPos) {
@@ -261,50 +285,52 @@ vec3 renderDisk(float r, float phi, float theta, float a, float rHorizon, vec3 c
     
     if (r < rDiskInner || r > DISK_OUTER) return vec3(0.0);
     
-    // Orbital velocity
-    float omega = 1.0 / (r * sqrt(r));
+    // Optimized orbital velocity
+    float r_sqrt = sqrt(r);
+    float omega = 1.0 / (r * r_sqrt);
     float vPhi = r * omega;
     
     // Base temperature profile
     float T = uDiskColorTemp * pow(rDiskInner / r, 0.75);
     
     // Gravitational and Doppler shifts
-    float redshift = sqrt(max(0.01, 1.0 - 2.0 / r));
-    float dopplerShift = 1.0 / (1.0 + vPhi * sin(phi));
+    float redshift_factor = max(0.01, 1.0 - 2.0 / r);
+    float redshift = sqrt(redshift_factor);
+    float dopplerShift = 1.0 / max(0.1, 1.0 + vPhi * sin(phi));
     T *= redshift * dopplerShift;
     
-    // ENHANCED: Disk structure with turbulence
+    // Simplified disk structure
     vec2 diskUV = vec2(r * 0.5, phi * 5.0);
     float turbulence = fbm(diskUV + uTime * 0.05);
     float spiral = sin(phi * 3.0 - r * 2.0 + uTime * 0.2) * 0.5 + 0.5;
     
-    // Multiple disk layers
-    float diskPattern = 0.0;
-    diskPattern += smoothstep(0.3, 0.7, turbulence) * 0.5;
-    diskPattern += spiral * 0.3;
-    diskPattern += noise(diskUV * 5.0) * 0.2;
+    // Combined disk pattern
+    float diskPattern = smoothstep(0.3, 0.7, turbulence) * 0.5 + spiral * 0.3 + noise(diskUV * 5.0) * 0.2;
     
-    // Brightness with detail
-    float brightness = pow(rDiskInner / r, 3.5) * (0.7 + diskPattern * 0.3);
+    // Optimized brightness calculation
+    float r_ratio = rDiskInner / r;
+    float brightness = pow(r_ratio, 3.5) * (0.7 + diskPattern * 0.3);
     brightness *= smoothstep(DISK_OUTER, DISK_OUTER - 3.0, r);
     brightness *= smoothstep(rDiskInner, rDiskInner + 0.5, r);
     
-    // Photon ring enhancement
+    // Photon sphere enhancement
     float photonSphere = 1.5 * (1.0 + cos((2.0 / 3.0) * acos(-a)));
-    float ringGlow = exp(-pow((r - photonSphere) / 0.3, 2.0)) * 3.0;
+    float r_minus_photon = r - photonSphere;
+    float ringGlow = exp(-r_minus_photon * r_minus_photon * 11.1111111111) * 3.0; // Precomputed 1/0.3^2
     
     // Color with temperature variation
     vec3 diskColor = blackbodyColor(T * (1.0 + turbulence * 0.2));
     
-    // Add inner glow (very hot innermost region)
-    float innerGlow = exp(-pow((r - rDiskInner) / 0.5, 2.0)) * 2.0;
+    // Inner glow
+    float r_minus_inner = r - rDiskInner;
+    float innerGlow = exp(-r_minus_inner * r_minus_inner * 4.0) * 2.0; // Precomputed 1/0.5^2
     diskColor += vec3(1.5, 1.2, 1.0) * innerGlow;
     
     return diskColor * brightness * (1.0 + ringGlow);
 }
 
 // ============================================================================
-// VOLUMETRIC GLOW ACCUMULATION
+// OPTIMIZED VOLUMETRIC GLOW
 // ============================================================================
 
 vec3 volumetricGlow(PhotonState photon, float a, float rHorizon) {
@@ -369,7 +395,8 @@ vec3 traceRay(vec3 rayOrigin, vec3 rayDir, float a) {
                 );
                 background = starfield(dir);
             }
-            return accumulatedColor + accumulatedGlow + background * (1.0 - min(1.0, length(accumulatedColor)));
+            float accumLength = length(accumulatedColor);
+            return accumulatedColor + accumulatedGlow + background * (1.0 - min(1.0, accumLength));
         }
         
         // Accumulate volumetric glow
@@ -382,7 +409,7 @@ vec3 traceRay(vec3 rayOrigin, vec3 rayDir, float a) {
         if (abs(diskPlaneZ) < DISK_THICKNESS && diskR > rDiskInner && diskR < DISK_OUTER && !hitDisk) {
             vec3 diskColor = renderDisk(diskR, photon.phi, photon.theta, a, rHorizon, rayOrigin);
             
-            // Add dust/wisps trailing from disk
+            // Simplified dust effect
             float dustNoise = noise3D(vec3(diskR * 0.5, photon.phi * 3.0, uTime * 0.1));
             float dustWisps = pow(dustNoise, 3.0) * 0.4;
             diskColor += diskColor * dustWisps;
@@ -399,7 +426,7 @@ vec3 traceRay(vec3 rayOrigin, vec3 rayDir, float a) {
 }
 
 // ============================================================================
-// ENHANCED TONE MAPPING
+// OPTIMIZED TONE MAPPING
 // ============================================================================
 
 vec3 enhancedACES(vec3 x) {
@@ -411,7 +438,6 @@ vec3 enhancedACES(vec3 x) {
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
-// Bloom effect
 vec3 bloom(vec3 color, float threshold) {
     vec3 bright = max(color - threshold, 0.0);
     return bright * 0.3;
@@ -443,19 +469,19 @@ void main() {
     // Trace ray
     vec3 color = traceRay(camPos, rayDir, uSpin);
     
-    // Add bloom for glow effect
+    // Add bloom
     color += bloom(color, 0.8);
     
     // HDR exposure and tone mapping
     color *= uExposure;
     color = enhancedACES(color);
     
-    // Vignette for cinematic look
-    float vignette = 1.0 - dot(uv, uv) * 0.3;
-    color *= vignette;
+    // Vignette
+    float uv_dot = dot(uv, uv);
+    color *= 1.0 - uv_dot * 0.3;
     
     // Gamma correction
-    color = pow(color, vec3(1.0 / 2.2));
+    color = pow(color, vec3(0.4545454545)); // Precompute 1/2.2
     
     FragColor = vec4(color, 1.0);
 }

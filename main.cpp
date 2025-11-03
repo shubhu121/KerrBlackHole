@@ -179,7 +179,7 @@ int main() {
     
     // Create shader program
     GLuint shaderProgram = createShaderProgram("shaders/blackhole.vert", 
-                                               "shaders/blackhole.frag");
+                                               "shaders/blackhole_optimized.frag");
     
     // Full-screen quad
     float quadVertices[] = {

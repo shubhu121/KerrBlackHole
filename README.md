@@ -4,6 +4,29 @@ A physically accurate real-time renderer of a rotating (Kerr) black hole with gr
 
 ![Kerr Black Hole](screenshot.png)
 
+## Installation
+
+### 1. Prerequisites
+- Windows 10/11
+- Visual Studio 2019 or later (with C++ workload)
+- CMake 3.15 or higher
+
+### 2. Setup
+1.  **Generate GLAD:**
+    - Go to the [GLAD website](https://glad.dav1d.de/).
+    - Settings: Language `C/C++`, Specification `OpenGL`, gl `Version 4.6`, Profile `Core`.
+    - Click **Generate** and download the `glad.zip` file.
+    - Extract it to the `external/glad` directory.
+
+2.  **Run Setup Script:**
+    - Run the `setup.bat` script. This will download dependencies using `vcpkg`.
+
+### 3. Build
+- Run `build.bat` from a "Developer Command Prompt for Visual Studio".
+
+### 4. Run
+- The executable will be at `build/Release/KerrBlackHole.exe`.
+
 ## Features
 
 ### Scientific Accuracy
@@ -173,9 +196,10 @@ Typical performance on modern GPUs:
 | 2560×1440  | 40 FPS          | 35 FPS         |
 
 **Optimization Tips**:
-- Reduce `MAX_STEPS` in fragment shader (line 24)
-- Increase `STEP_SIZE` for faster but less accurate integration
-- Disable starfield rendering for pure black hole visualization
+- **Performance has been significantly improved by reducing the ray-marching steps.**
+- For further tuning, you can adjust `MAX_STEPS` in `shaders/blackhole.frag`.
+- Increase `STEP_SIZE` for faster but less accurate integration.
+- Disable starfield rendering for pure black hole visualization.
 
 ## Testing Scenarios
 
