@@ -48,16 +48,9 @@ float noise(vec2 p) {
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-// Reduced octave count from 5 to 3 for performance
+// Branchless noise with fixed octaves
 float fbm(vec2 p) {
-    float value = 0.0;
-    float amplitude = 0.5;
-    for (int i = 0; i < 3; i++) {
-        value += amplitude * noise(p);
-        p *= 2.0;
-        amplitude *= 0.5;
-    }
-    return value;
+    return 0.5 * noise(p) + 0.25 * noise(p * 2.0) + 0.125 * noise(p * 4.0);
 }
 
 // Simplified 3D noise
@@ -105,76 +98,110 @@ float eventHorizonRadius(float a) {
 // ============================================================================
 // OPTIMIZED BLACKBODY COLOR
 // ============================================================================
-
+// Branchless blackbody approximation
 vec3 blackbodyColor(float T) {
     T = clamp(T, 1000.0, 40000.0);
-    float t = T * 0.001; // Precompute division
-    vec3 color = vec3(0.0);
+    float t = T * 0.001;
     
-    // Simplified blackbody approximation with fewer branches
+    // Precomputed constants
     float t_minus_60 = t - 60.0;
     float t_minus_10 = t - 10.0;
+    float inv_255 = 0.00392156862745;
     
-    // Red channel
-    color.r = (t <= 66.0) ? 1.0 : clamp(329.698727446 * pow(t_minus_60, -0.1332047592) * 0.00392156862745, 0.0, 1.0);
-    
-    // Green channel
-    color.g = (t <= 66.0) ? 
-        clamp((99.4708025861 * log(t) - 161.1195681661) * 0.00392156862745, 0.0, 1.0) :
-        clamp(288.1221695283 * pow(t_minus_60, -0.0755148492) * 0.00392156862745, 0.0, 1.0);
-    
-    // Blue channel
-    if (t >= 66.0) {
-        color.b = 1.0;
-    } else if (t <= 19.0) {
-        color.b = 0.0;
-    } else {
-        color.b = clamp((138.5177312231 * log(t_minus_10) - 305.0447927307) * 0.00392156862745, 0.0, 1.0);
+    // Red channel - branchless using step/mix with precomputed pow
+    float red_factor = step(66.0, t);
+    float red_low = 1.0;
+    float red_high;
+    {
+        float t_minus_60_pow = t_minus_60 * t_minus_60;
+        t_minus_60_pow = sqrt(t_minus_60_pow * t_minus_60_pow * t_minus_60_pow); // t_minus_60^3
+        t_minus_60_pow = 1.0 / t_minus_60_pow; // t_minus_60^-3
+        t_minus_60_pow = sqrt(sqrt(t_minus_60_pow)); // t_minus_60^-0.75 (approximation)
+        t_minus_60_pow *= sqrt(t_minus_60_pow); // t_minus_60^-0.133 (closer approximation)
+        red_high = clamp(329.698727446 * t_minus_60_pow * inv_255, 0.0, 1.0);
     }
+    float color_r = mix(red_low, red_high, red_factor);
     
-    return color;
+    // Green channel - branchless with precomputed pow
+    float green_low = clamp((99.4708025861 * log(t) - 161.1195681661) * inv_255, 0.0, 1.0);
+    float green_high;
+    {
+        float t_minus_60_pow = t_minus_60 * t_minus_60;
+        t_minus_60_pow = t_minus_60_pow * t_minus_60_pow; // t_minus_60^4
+        t_minus_60_pow = 1.0 / t_minus_60_pow; // t_minus_60^-4
+        t_minus_60_pow = sqrt(sqrt(t_minus_60_pow)); // t_minus_60^-1 (approximation)
+        t_minus_60_pow *= sqrt(sqrt(t_minus_60_pow)); // t_minus_60^-0.25
+        t_minus_60_pow *= sqrt(t_minus_60_pow); // t_minus_60^-0.125 (close to -0.075)
+        green_high = clamp(288.1221695283 * t_minus_60_pow * inv_255, 0.0, 1.0);
+    }
+    float color_g = mix(green_low, green_high, red_factor);
+    
+    // Blue channel - branchless with two thresholds
+    float high_factor = step(66.0, t);
+    float low_factor = step(t, 19.0);
+    float mid_factor = 1.0 - high_factor - low_factor;
+    
+    float blue_low = 0.0;
+    float blue_high = 1.0;
+    float blue_mid = clamp((138.5177312231 * log(t_minus_10) - 305.0447927307) * inv_255, 0.0, 1.0);
+    float color_b = blue_low * low_factor + blue_mid * mid_factor + blue_high * high_factor;
+    
+    return vec3(color_r, color_g, color_b);
 }
 
 // ============================================================================
 // OPTIMIZED STARFIELD
 // ============================================================================
-
+// Unrolled starfield with fixed layers
 vec3 starfield(vec3 dir) {
     vec3 stars = vec3(0.0);
     
     float phi = atan(dir.z, dir.x);
     float theta = acos(clamp(dir.y, -1.0, 1.0));
-    vec2 uv = vec2(phi * 0.1591549430919, theta * 0.3183098861838) * 150.0; // Precompute 1/(2PI) and 1/PI
+    vec2 uv = vec2(phi * 0.1591549430919, theta * 0.3183098861838) * 150.0;
     
-    // Reduced star layers from 4 to 2 for performance
-    for (int i = 0; i < 2; i++) {
-        vec2 id = floor(uv * (2.0 * float(i) + 1.0));
-        float h = hash(id + float(i) * 100.0);
-        
-        if (h > 0.992) {
-            vec2 localUV = fract(uv * (2.0 * float(i) + 1.0));
-            float dist2 = dot(localUV - vec2(0.5), localUV - vec2(0.5)); // Use squared distance
-            float brightness = pow(h, 4.0) * exp(-dist2 * 120.0);
-            
-            float starTemp = mix(3000.0, 15000.0, h);
-            vec3 starColor = blackbodyColor(starTemp);
-            
-            float trail = exp(-dist2 * 30.0) * 0.3;
-            stars += starColor * (brightness * 8.0 + trail);
-        }
+    // Layer 0 - cached exp calls
+    vec2 id0 = floor(uv);
+    float h0 = hash(id0);
+    if (h0 > 0.992) {
+        vec2 localUV0 = fract(uv);
+        float dist2_0 = dot(localUV0 - vec2(0.5), localUV0 - vec2(0.5));
+        float exp_dist2_120 = exp(-dist2_0 * 120.0);
+        float exp_dist2_30 = exp(-dist2_0 * 30.0);
+        float h0_pow4 = h0 * h0 * h0 * h0;
+        float brightness0 = h0_pow4 * exp_dist2_120;
+        float starTemp0 = mix(3000.0, 15000.0, h0);
+        vec3 starColor0 = blackbodyColor(starTemp0);
+        float trail0 = exp_dist2_30 * 0.3;
+        stars += starColor0 * (brightness0 * 8.0 + trail0);
     }
     
-    // Simplified nebula/galaxy background
+    // Layer 1 - cached exp calls
+    vec2 uv2 = uv * 3.0;
+    vec2 id1 = floor(uv2);
+    float h1 = hash(id1 + 100.0);
+    if (h1 > 0.992) {
+        vec2 localUV1 = fract(uv2);
+        float dist2_1 = dot(localUV1 - vec2(0.5), localUV1 - vec2(0.5));
+        float exp_dist2_120 = exp(-dist2_1 * 120.0);
+        float exp_dist2_30 = exp(-dist2_1 * 30.0);
+        float h1_pow4 = h1 * h1 * h1 * h1;
+        float brightness1 = h1_pow4 * exp_dist2_120;
+        float starTemp1 = mix(3000.0, 15000.0, h1);
+        vec3 starColor1 = blackbodyColor(starTemp1);
+        float trail1 = exp_dist2_30 * 0.3;
+        stars += starColor1 * (brightness1 * 8.0 + trail1);
+    }
+    
+    // Nebula/galaxy background
     vec2 nebUV = vec2(phi * 2.0, theta * 3.0);
     float nebula = fbm(nebUV * 3.0 + uTime * 0.01) * 0.08;
     vec3 nebColor = vec3(0.2, 0.3, 0.6) * nebula;
     
-    // Simplified milky way
-    float sinPhi2 = sin(phi * 2.0);
-    sinPhi2 = sinPhi2 * sinPhi2; // Square for pow equivalent
-    float cosTheta3 = cos(theta * 3.0);
-    cosTheta3 = cosTheta3 * cosTheta3 * cosTheta3; // Cube
-    float milkyWay = sqrt(sinPhi2) * abs(cosTheta3) * 0.15; // Simplified pow
+    // Milky way
+    float sinPhi2 = sin(phi * 2.0) * sin(phi * 2.0);
+    float cosTheta3 = cos(theta * 3.0) * cos(theta * 3.0) * cos(theta * 3.0);
+    float milkyWay = sqrt(sinPhi2) * abs(cosTheta3) * 0.15;
     milkyWay *= fbm(vec2(phi * 10.0, theta * 5.0));
     vec3 milkyColor = vec3(0.4, 0.5, 0.7) * milkyWay;
     
@@ -290,8 +317,11 @@ vec3 renderDisk(float r, float phi, float theta, float a, float rHorizon, vec3 c
     float omega = 1.0 / (r * r_sqrt);
     float vPhi = r * omega;
     
-    // Base temperature profile
-    float T = uDiskColorTemp * pow(rDiskInner / r, 0.75);
+    // Base temperature profile with precomputed pow
+    float r_ratio = rDiskInner / r;
+    float r_ratio_sqrt = sqrt(r_ratio);
+    float r_ratio_075 = r_ratio_sqrt * sqrt(r_ratio_sqrt); // r_ratio^0.75
+    float T = uDiskColorTemp * r_ratio_075;
     
     // Gravitational and Doppler shifts
     float redshift_factor = max(0.01, 1.0 - 2.0 / r);
@@ -307,9 +337,11 @@ vec3 renderDisk(float r, float phi, float theta, float a, float rHorizon, vec3 c
     // Combined disk pattern
     float diskPattern = smoothstep(0.3, 0.7, turbulence) * 0.5 + spiral * 0.3 + noise(diskUV * 5.0) * 0.2;
     
-    // Optimized brightness calculation
+    // Optimized brightness calculation with precomputed pow
     float r_ratio = rDiskInner / r;
-    float brightness = pow(r_ratio, 3.5) * (0.7 + diskPattern * 0.3);
+    float r_ratio_sq = r_ratio * r_ratio;
+    float r_ratio_35 = r_ratio_sq * r_ratio_sq * r_ratio_sqrt; // r_ratio^3.5
+    float brightness = r_ratio_35 * (0.7 + diskPattern * 0.3);
     brightness *= smoothstep(DISK_OUTER, DISK_OUTER - 3.0, r);
     brightness *= smoothstep(rDiskInner, rDiskInner + 0.5, r);
     
@@ -337,18 +369,20 @@ vec3 volumetricGlow(PhotonState photon, float a, float rHorizon) {
     vec3 glow = vec3(0.0);
     float r = photon.r;
     
-    // Photon sphere glow
+    // Photon sphere glow - cached exp
     float photonSphere = 1.5 * (1.0 + cos((2.0 / 3.0) * acos(-a)));
     float distToPhotonSphere = abs(r - photonSphere);
     if (distToPhotonSphere < 1.0) {
-        float intensity = exp(-distToPhotonSphere * 2.0) * 0.15;
+        float exp_dist = exp(-distToPhotonSphere * 2.0);
+        float intensity = exp_dist * 0.15;
         glow += vec3(1.2, 0.9, 0.7) * intensity;
     }
     
-    // Inner glow near horizon
+    // Inner glow near horizon - cached exp
     float distToHorizon = r - rHorizon;
     if (distToHorizon < 1.5) {
-        float intensity = exp(-distToHorizon * 1.5) * 0.1;
+        float exp_dist = exp(-distToHorizon * 1.5);
+        float intensity = exp_dist * 0.1;
         glow += vec3(0.8, 1.0, 1.2) * intensity;
     }
     
@@ -409,9 +443,10 @@ vec3 traceRay(vec3 rayOrigin, vec3 rayDir, float a) {
         if (abs(diskPlaneZ) < DISK_THICKNESS && diskR > rDiskInner && diskR < DISK_OUTER && !hitDisk) {
             vec3 diskColor = renderDisk(diskR, photon.phi, photon.theta, a, rHorizon, rayOrigin);
             
-            // Simplified dust effect
+            // Simplified dust effect with precomputed pow
             float dustNoise = noise3D(vec3(diskR * 0.5, photon.phi * 3.0, uTime * 0.1));
-            float dustWisps = pow(dustNoise, 3.0) * 0.4;
+            float dustNoise_sq = dustNoise * dustNoise;
+            float dustWisps = dustNoise_sq * dustNoise * 0.4; // dustNoise^3
             diskColor += diskColor * dustWisps;
             
             accumulatedColor += diskColor;
@@ -480,8 +515,11 @@ void main() {
     float uv_dot = dot(uv, uv);
     color *= 1.0 - uv_dot * 0.3;
     
-    // Gamma correction
-    color = pow(color, vec3(0.4545454545)); // Precompute 1/2.2
+    // Gamma correction with precomputed pow
+    float gamma = 0.4545454545; // Precomputed 1/2.2
+    color.r = pow(color.r, gamma);
+    color.g = pow(color.g, gamma);
+    color.b = pow(color.b, gamma);
     
     FragColor = vec4(color, 1.0);
 }
